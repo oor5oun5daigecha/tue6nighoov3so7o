@@ -63,31 +63,31 @@ echo
 
 # Test 2: Core Ruby functionality
 echo "🧪 Test 2: Core Ruby Functionality"
-ruby -e "
-  puts 'Testing JSON support...'
-  require 'json'
-  test_data = {'test' => true, 'version' => RUBY_VERSION}
+ruby -e '
+  puts "Testing JSON support..."
+  require "json"
+  test_data = {"test" => true, "version" => RUBY_VERSION}
   json_result = JSON.generate(test_data)
   parsed = JSON.parse(json_result)
-  puts '✅ JSON works: ' + json_result
+  puts "✅ JSON works: " + json_result
   
-  puts 'Testing array methods...'
+  puts "Testing array methods..."
   test_array = [1, 2, 3, 4, 5]
-  if RUBY_VERSION >= '2.4.0'
+  if RUBY_VERSION >= "2.4.0"
     result = test_array.sum
-    method_name = 'Array#sum (Ruby 2.4+)'
+    method_name = "Array#sum (Ruby 2.4+)"
   else
     result = test_array.inject(0, :+)
-    method_name = 'Array#inject (Ruby 2.3.8 compatible)'
+    method_name = "Array#inject (Ruby 2.3.8 compatible)"
   end
-  puts '✅ Array sum: ' + result.to_s + ' using ' + method_name
+  puts "✅ Array sum: " + result.to_s + " using " + method_name
   
-  puts 'Testing string methods...'
-  test_string = 'Hello Ruby ' + RUBY_VERSION
-  puts '✅ String concatenation: ' + test_string
+  puts "Testing string methods..."
+  test_string = "Hello Ruby " + RUBY_VERSION
+  puts "✅ String concatenation: " + test_string
   
-  puts '✅ Core functionality test passed'
-" 2>/dev/null && echo "✅ Core Ruby functionality works" || {
+  puts "✅ Core functionality test passed"
+' && echo "✅ Core Ruby functionality works" || {
     echo "❌ Core Ruby functionality failed"
     echo "This may indicate Ruby installation issues"
 }
@@ -138,7 +138,7 @@ if [ -f "src/prometheus_exporter.rb" ]; then
     echo "Testing minimal application loading..."
     
     # Test without full gem dependencies
-    ruby -e "
+    ruby -e '
       # Simulate application loading without gems
       RUBY_VERSION_FOR_TEST = RUBY_VERSION
       
@@ -149,7 +149,7 @@ if [ -f "src/prometheus_exporter.rb" ]; then
         end
         
         def ruby_sum(array)
-          if RUBY_VERSION_FOR_TEST >= '2.4.0'
+          if RUBY_VERSION_FOR_TEST >= "2.4.0"
             array.sum
           else
             array.inject(0, :+)
@@ -158,9 +158,9 @@ if [ -f "src/prometheus_exporter.rb" ]; then
         
         def info
           {
-            'ruby_version' => @ruby_version,
-            'engine' => (defined?(RUBY_ENGINE) ? RUBY_ENGINE : 'MRI'),
-            'test_sum' => ruby_sum([1, 2, 3, 4, 5])
+            "ruby_version" => @ruby_version,
+            "engine" => (defined?(RUBY_ENGINE) ? RUBY_ENGINE : "MRI"),
+            "test_sum" => ruby_sum([1, 2, 3, 4, 5])
           }
         end
       end
@@ -168,11 +168,11 @@ if [ -f "src/prometheus_exporter.rb" ]; then
       app = TestPrometheusApp.new
       info = app.info
       
-      puts '✅ Application simulation successful'
-      puts '   Ruby: ' + info['ruby_version']
-      puts '   Engine: ' + info['engine']
-      puts '   Test sum: ' + info['test_sum'].to_s
-    " 2>/dev/null && echo "✅ Application loading simulation passed" || {
+      puts "✅ Application simulation successful"
+      puts "   Ruby: " + info["ruby_version"]
+      puts "   Engine: " + info["engine"]
+      puts "   Test sum: " + info["test_sum"].to_s
+    ' && echo "✅ Application loading simulation passed" || {
         echo "❌ Application loading simulation failed"
     }
 else
@@ -196,7 +196,7 @@ else
     echo "❌ Application syntax issues detected"
 fi
 
-if ruby -e "require 'json'; JSON.generate({'test' => true})" > /dev/null 2>&1; then
+if ruby -e 'require "json"; JSON.generate({"test" => true})' > /dev/null 2>&1; then
     echo "✅ Core functionality working"
 else
     echo "❌ Core functionality issues"
