@@ -143,6 +143,10 @@ debug_inside() {
     docker exec $CONTAINER_NAME java -version
     echo
     
+    echo "📦 Passenger installation check:"
+    docker exec $CONTAINER_NAME /bin/bash -c "./check-passenger-installation.sh" || echo "Passenger check script not available"
+    echo
+    
     echo "🚢 Passenger status:"
     docker exec $CONTAINER_NAME passenger-status || echo "Passenger status not available"
     echo

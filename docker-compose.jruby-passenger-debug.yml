@@ -1,5 +1,7 @@
 # Quick debug setup for JRuby + Passenger + Nginx
 # Usage: docker-compose -f docker-compose.jruby-passenger-debug.yml up --build
+# 
+# Fixed: Uses proper apt installation for libnginx-mod-http-passenger
 
 version: '3.8'
 

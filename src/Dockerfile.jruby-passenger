@@ -94,14 +94,14 @@ RUN set -e && \
 
 # Install Nginx + Passenger (fixed for Ubuntu Noble)
 RUN set -e && \
-    # Add Passenger repository for Ubuntu Noble
-    curl https://oss-binaries.phusionpassenger.com/auto-software-signing-gpg-key.txt | gpg --dearmor | tee /etc/apt/trusted.gpg.d/phusion.gpg >/dev/null && \
-    echo 'deb https://oss-binaries.phusionpassenger.com/apt/passenger noble main' > /etc/apt/sources.list.d/passenger.list && \
+    # Install Nginx with Passenger module via apt (proper way)
     apt-get update && \
-    # Install nginx-extras (includes modules) and passenger
-    apt-get install -y nginx-extras passenger && \
-    # Enable Passenger module
-    echo 'load_module modules/ngx_http_passenger_module.so;' > /etc/nginx/modules-enabled/50-mod-http-passenger.conf && \
+    apt-get install -y nginx-full libnginx-mod-http-passenger passenger && \
+    # The module is automatically enabled by libnginx-mod-http-passenger package
+    # Verify the module was loaded
+    if [ ! -f /etc/nginx/modules-enabled/50-mod-http-passenger.conf ]; then \
+        echo "load_module modules/ngx_http_passenger_module.so;" > /etc/nginx/modules-enabled/50-mod-http-passenger.conf; \
+    fi && \
     # Configure Passenger in nginx.conf
     echo 'passenger_root /usr/lib/ruby/vendor_ruby/phusion_passenger/locations.ini;' >> /etc/nginx/nginx.conf && \
     echo 'passenger_ruby /usr/bin/jruby;' >> /etc/nginx/nginx.conf && \
@@ -139,6 +139,10 @@ COPY --chown=app:app . .
 
 # Remove lockfiles to avoid conflicts
 RUN rm -f Gemfile.lock
+
+# Copy installation check script
+COPY --chown=app:app ../check-passenger-installation.sh /home/app/webapp/check-passenger-installation.sh
+RUN chmod +x /home/app/webapp/check-passenger-installation.sh
 
 # Configure Passenger to use JRuby
 RUN echo 'passenger_ruby /usr/bin/jruby;' > /etc/nginx/conf.d/passenger-jruby.conf

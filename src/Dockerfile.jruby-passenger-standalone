@@ -1,0 +1,164 @@
+# JRuby + Passenger Standalone (без Nginx модуля)
+# Использует Passenger в standalone режиме с встроенным Nginx
+FROM phusion/baseimage:noble-1.0.2
+LABEL maintainer="Monitus Team - Standalone Version"
+
+# Environment variables for JRuby optimization
+ENV RACK_ENV=production \
+    PORT=80 \
+    LOG_LEVEL=info \
+    # JRuby JVM optimizations
+    JRUBY_OPTS="-Xcompile.invokedynamic=true -J-Djnr.ffi.asm.enabled=false" \
+    JAVA_OPTS="-Xmx1G -Xms256M -XX:+UseG1GC -XX:MaxGCPauseMillis=200" \
+    MALLOC_ARENA_MAX=2 \
+    # Passenger configuration
+    PASSENGER_APP_ENV=production \
+    PASSENGER_MIN_INSTANCES=2 \
+    PASSENGER_MAX_INSTANCES=8 \
+    PASSENGER_CONCURRENCY_MODEL=thread \
+    PASSENGER_THREAD_COUNT=16
+
+# Use bash as shell for RVM compatibility
+SHELL ["/bin/bash", "-c"]
+
+# Add build scripts directory
+ADD . /pd_build
+
+# Install dependencies and RVM
+RUN set -e && \
+    # Install base system dependencies
+    apt-get update && apt-get install -y --no-install-recommends \
+        curl wget gnupg2 software-properties-common \
+        build-essential git-core ca-certificates \
+        libssl-dev libreadline-dev zlib1g-dev \
+        libyaml-dev libxml2-dev libxslt1-dev \
+        libffi-dev libgdbm-dev libncurses5-dev \
+        libsqlite3-dev libmysqlclient-dev libpq-dev && \
+    rm -rf /var/lib/apt/lists/* && \
+    # Create app user and group
+    groupadd -r app && \
+    useradd -r -g app -d /home/app -s /bin/bash -m app && \
+    # Import RVM GPG keys
+    gpg --keyserver hkp://keyserver.ubuntu.com --recv-keys \
+        409B6B1796C275462A1703113804BB82D39DC0E3 \
+        7D2BAF1CF37B13E2069D6956105BD0E739499BDB && \
+    # Install RVM
+    curl -sSL https://get.rvm.io | bash -s stable && \
+    # Configure RVM environment 
+    echo 'export rvmsudo_secure_path=1' > /etc/profile.d/rvm_secure_path.sh && \
+    echo 'export rvm_silence_path_mismatch_check_flag=1' > /etc/profile.d/rvm_silence_path_warning.sh && \
+    chmod +x /etc/profile.d/rvm_*.sh && \
+    # Add app user to rvm group
+    usermod -a -G rvm app
+
+# Install Java 17 for JRuby
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openjdk-17-jre-headless && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install JRuby
+RUN set -e && \
+    source /usr/local/rvm/scripts/rvm && \
+    RVM_ID="jruby-9.4.14.0" && \
+    /usr/local/rvm/bin/rvm install $RVM_ID && \
+    /usr/local/rvm/bin/rvm-exec $RVM_ID@global gem install rake rack --no-document && \
+    # Create wrapper scripts
+    echo '#!/bin/sh' > /usr/bin/jruby && \
+    echo 'exec /usr/local/rvm/wrappers/jruby-9.4.14.0/ruby "$@"' >> /usr/bin/jruby && \
+    chmod +x /usr/bin/jruby && \
+    echo '#!/bin/sh' > /usr/bin/ruby && \
+    echo 'exec /usr/local/rvm/wrappers/jruby-9.4.14.0/ruby "$@"' >> /usr/bin/ruby && \
+    chmod +x /usr/bin/ruby && \
+    echo '#!/bin/sh' > /usr/bin/gem && \
+    echo 'exec /usr/local/rvm/wrappers/jruby-9.4.14.0/gem "$@"' >> /usr/bin/gem && \
+    chmod +x /usr/bin/gem && \
+    echo '#!/bin/sh' > /usr/bin/bundle && \
+    echo 'exec /usr/local/rvm/wrappers/jruby-9.4.14.0/bundle "$@"' >> /usr/bin/bundle && \
+    chmod +x /usr/bin/bundle && \
+    # Set JRuby as default
+    bash -lc "rvm use $RVM_ID --default"
+
+# Install Passenger (standalone mode - без nginx модуля)
+RUN set -e && \
+    source /usr/local/rvm/scripts/rvm && \
+    rvm use jruby-9.4.14.0 && \
+    # Install Passenger gem
+    jruby -S gem install passenger --no-document && \
+    # Create passenger wrapper
+    echo '#!/bin/sh' > /usr/bin/passenger && \
+    echo 'exec /usr/local/rvm/wrappers/jruby-9.4.14.0/passenger "$@"' >> /usr/bin/passenger && \
+    chmod +x /usr/bin/passenger && \
+    # Build native support for JRuby
+    jruby -S passenger-config build-native-support
+
+# Setup application directory
+RUN mkdir -p /home/app/webapp && \
+    chown -R app:app /home/app
+
+WORKDIR /home/app/webapp
+
+# Install gems
+COPY --chown=app:app Gemfile.jruby-passenger Gemfile
+RUN set -e && \
+    source /usr/local/rvm/scripts/rvm && \
+    rvm use jruby-9.4.14.0 && \
+    bundle config set --local deployment true && \
+    bundle config set --local path vendor/bundle && \
+    bundle config set --local without development:test && \
+    bundle install --jobs=4 --retry=3
+
+# Copy application
+COPY --chown=app:app . .
+RUN rm -f Gemfile.lock
+
+# Create startup script for Passenger standalone
+RUN echo '#!/bin/bash' > /home/app/start_passenger.sh && \
+    echo 'set -e' >> /home/app/start_passenger.sh && \
+    echo 'cd /home/app/webapp' >> /home/app/start_passenger.sh && \
+    echo 'source /usr/local/rvm/scripts/rvm' >> /home/app/start_passenger.sh && \
+    echo 'rvm use jruby-9.4.14.0' >> /home/app/start_passenger.sh && \
+    echo 'echo "Starting Passenger standalone on port $PORT"' >> /home/app/start_passenger.sh && \
+    echo 'exec bundle exec passenger start --port $PORT --environment $PASSENGER_APP_ENV \\' >> /home/app/start_passenger.sh && \
+    echo '  --spawn-method direct --concurrency-model thread \\' >> /home/app/start_passenger.sh && \
+    echo '  --min-instances $PASSENGER_MIN_INSTANCES \\' >> /home/app/start_passenger.sh && \
+    echo '  --max-instances $PASSENGER_MAX_INSTANCES \\' >> /home/app/start_passenger.sh && \
+    echo '  --thread-count $PASSENGER_THREAD_COUNT \\' >> /home/app/start_passenger.sh && \
+    echo '  --log-file /dev/stdout \\' >> /home/app/start_passenger.sh && \
+    echo '  --config-template /home/app/passenger_nginx.conf.erb' >> /home/app/start_passenger.sh && \
+    chmod +x /home/app/start_passenger.sh && \
+    chown app:app /home/app/start_passenger.sh
+
+# Create Nginx template for Passenger standalone
+RUN echo 'server {' > /home/app/passenger_nginx.conf.erb && \
+    echo '  listen <%= @port %>;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  server_name _;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  root <%= @app_root %>/public;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  passenger_enabled on;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  passenger_ruby <%= @ruby %>;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  passenger_app_env <%= @app_env %>;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  passenger_spawn_method direct;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  passenger_concurrency_model thread;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  # Security headers' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  add_header X-Frame-Options DENY always;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  add_header X-Content-Type-Options nosniff always;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  # Gzip compression' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  gzip on;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  gzip_types text/plain application/json text/css application/javascript;' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  # Health check' >> /home/app/passenger_nginx.conf.erb && \
+    echo '  location /health { return 200 "healthy"; add_header Content-Type text/plain; }' >> /home/app/passenger_nginx.conf.erb && \
+    echo '}' >> /home/app/passenger_nginx.conf.erb && \
+    chown app:app /home/app/passenger_nginx.conf.erb
+
+# Setup logs
+RUN mkdir -p /var/log/webapp && \
+    chown -R app:app /var/log/webapp
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=15s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost:$PORT/health || exit 1
+
+EXPOSE 80
+
+USER app
+
+CMD ["/home/app/start_passenger.sh"]
