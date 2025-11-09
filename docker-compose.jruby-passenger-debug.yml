@@ -1,0 +1,75 @@
+# Quick debug setup for JRuby + Passenger + Nginx
+# Usage: docker-compose -f docker-compose.jruby-passenger-debug.yml up --build
+
+version: '3.8'
+
+services:
+  jruby-passenger-debug:
+    build:
+      context: src/
+      dockerfile: Dockerfile.jruby-passenger
+    container_name: jruby-passenger-debug
+    ports:
+      - "8080:80"  # Map container port 80 to host port 8080
+    environment:
+      # JRuby optimizations
+      - JRUBY_OPTS=-Xcompile.invokedynamic=true --debug
+      - JAVA_OPTS=-Xmx1G -Xms256M -XX:+UseG1GC -XX:MaxGCPauseMillis=200
+      
+      # Application settings
+      - RACK_ENV=development  # Use development for more verbose logging
+      - LOG_LEVEL=debug
+      
+      # Passenger debug settings
+      - PASSENGER_LOG_LEVEL=3  # Verbose logging
+      - PASSENGER_DEBUG_MODE=true
+      - PASSENGER_APP_ENV=development
+      - PASSENGER_MIN_INSTANCES=1
+      - PASSENGER_MAX_INSTANCES=4
+      - PASSENGER_THREAD_COUNT=8  # Lower for debugging
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 120s  # Extended for JRuby + debug mode
+    
+    # Volume mounts for easier debugging
+    volumes:
+      - ./logs:/var/log/nginx  # Mount logs directory
+      
+    # Enable interactive debugging
+    stdin_open: true
+    tty: true
+    
+    networks:
+      - jruby-debug
+
+  # Optional: Prometheus for metrics testing
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-debug
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus-debug.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - jruby-passenger-debug
+    networks:
+      - jruby-debug
+
+networks:
+  jruby-debug:
+    driver: bridge
+    
+volumes:
+  logs:
+    driver: local

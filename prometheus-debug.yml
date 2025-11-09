@@ -1,0 +1,19 @@
+# Prometheus configuration for debugging JRuby + Passenger metrics
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'jruby-passenger-monitus'
+    static_configs:
+      - targets: ['jruby-passenger-debug:80']
+    metrics_path: '/monitus/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    
+  - job_name: 'jruby-passenger-status'
+    static_configs:
+      - targets: ['jruby-passenger-debug:80']
+    metrics_path: '/monitus/passenger-status-node_prometheus'
+    scrape_interval: 30s
+    scrape_timeout: 10s
