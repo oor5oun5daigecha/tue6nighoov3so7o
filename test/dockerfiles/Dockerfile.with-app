@@ -31,4 +31,4 @@ COPY src/ /monitor/
 
 # Health check - use port 80 and wait longer for startup
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
-  CMD curl -f http://localhost:80/monitus/metrics || exit 1
+  CMD curl -f http://localhost:10254/monitus/metrics || exit 1

@@ -1,4 +1,10 @@
 # Docker Compose configuration with JRuby support
+# 
+# Health check configuration:
+# - Passenger containers: Use port 10254 for monitoring app (/monitus/metrics)
+# - Standalone JRuby: Use port 8080 for main app (/health)
+# - Port mapping in nginx.conf.erb: monitoring app listens on 10254
+#
 services:
   # Original MRI Ruby services
   passenger_with_app:
@@ -9,7 +15,7 @@ services:
     ports:
       - "10254"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/monitus/metrics"]
+      test: ["CMD", "curl", "-f", "http://localhost:10254/monitus/metrics"]
       interval: 30s
       timeout: 15s
       retries: 5
@@ -25,7 +31,7 @@ services:
     ports:
       - "10254"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/monitus/metrics"]
+      test: ["CMD", "curl", "-f", "http://localhost:10254/monitus/metrics"]
       interval: 30s
       timeout: 15s
       retries: 5
@@ -41,7 +47,7 @@ services:
     ports:
       - "10254"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/monitus/metrics"]
+      test: ["CMD", "curl", "-f", "http://localhost:10254/monitus/metrics"]
       interval: 30s
       timeout: 15s
       retries: 5
@@ -58,7 +64,7 @@ services:
     ports:
       - "10254"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/monitus/metrics"]
+      test: ["CMD", "curl", "-f", "http://localhost:10254/monitus/metrics"]
       interval: 30s
       timeout: 15s
       retries: 5
@@ -77,7 +83,7 @@ services:
     ports:
       - "10254"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/monitus/metrics"]
+      test: ["CMD", "curl", "-f", "http://localhost:10254/monitus/metrics"]
       interval: 30s
       timeout: 15s
       retries: 5

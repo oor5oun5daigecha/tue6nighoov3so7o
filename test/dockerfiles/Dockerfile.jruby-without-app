@@ -38,4 +38,4 @@ RUN mkdir -p /app/public && echo '<html><body><p>Nothing to see here! (JRuby)</p
 
 # Health check - use port 80 and wait longer for JRuby startup
 HEALTHCHECK --interval=30s --timeout=15s --start-period=60s --retries=5 \
-  CMD curl -f http://localhost:80/monitus/metrics || exit 1
+  CMD curl -f http://localhost:10254/monitus/metrics || exit 1

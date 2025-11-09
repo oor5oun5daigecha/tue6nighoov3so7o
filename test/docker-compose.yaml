@@ -7,7 +7,7 @@ services:
     ports:
       - "10254"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/monitus/metrics"]
+      test: ["CMD", "curl", "-f", "http://localhost:10254/monitus/metrics"]
       interval: 30s
       timeout: 15s
       retries: 5
@@ -23,7 +23,7 @@ services:
     ports:
       - "10254"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/monitus/metrics"]
+      test: ["CMD", "curl", "-f", "http://localhost:10254/monitus/metrics"]
       interval: 30s
       timeout: 15s
       retries: 5
@@ -39,7 +39,7 @@ services:
     ports:
       - "10254"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/monitus/metrics"]
+      test: ["CMD", "curl", "-f", "http://localhost:10254/monitus/metrics"]
       interval: 30s
       timeout: 15s
       retries: 5
