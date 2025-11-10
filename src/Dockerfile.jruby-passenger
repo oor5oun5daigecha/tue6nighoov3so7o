@@ -122,7 +122,7 @@ RUN mkdir -p /home/app/webapp && \
 WORKDIR /home/app/webapp
 
 # Copy and install gems as app user
-COPY --chown=app:app Gemfile.jruby-passenger Gemfile
+COPY --chown=app:app src/Gemfile.jruby-passenger Gemfile
 USER app
 RUN set -e && \
     source /usr/local/rvm/scripts/rvm && \
@@ -135,13 +135,13 @@ RUN set -e && \
 USER root
 
 # Copy application code
-COPY --chown=app:app . .
+COPY --chown=app:app src/ .
 
 # Remove lockfiles to avoid conflicts
 RUN rm -f Gemfile.lock
 
 # Copy installation check script
-COPY --chown=app:app ../check-passenger-installation.sh /home/app/webapp/check-passenger-installation.sh
+COPY --chown=app:app check-passenger-installation.sh /home/app/webapp/check-passenger-installation.sh
 RUN chmod +x /home/app/webapp/check-passenger-installation.sh
 
 # Configure Passenger to use JRuby

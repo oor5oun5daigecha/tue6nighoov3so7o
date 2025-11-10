@@ -8,8 +8,8 @@ version: '3.8'
 services:
   jruby-passenger-debug:
     build:
-      context: src/
-      dockerfile: Dockerfile.jruby-passenger
+      context: ./
+      dockerfile: src/Dockerfile.jruby-passenger
     container_name: jruby-passenger-debug
     ports:
       - "8080:80"  # Map container port 80 to host port 8080
