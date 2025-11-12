@@ -148,7 +148,7 @@ RUN chmod +x /home/app/webapp/check-passenger-installation.sh
 RUN echo 'passenger_ruby /usr/bin/jruby;' > /etc/nginx/conf.d/passenger-jruby.conf
 
 # Copy Nginx virtual host configuration
-COPY nginx-jruby.conf /etc/nginx/sites-available/webapp.conf
+COPY src/nginx-jruby.conf /etc/nginx/sites-available/webapp.conf
 RUN rm -f /etc/nginx/sites-enabled/default && \
     ln -sf /etc/nginx/sites-available/webapp.conf /etc/nginx/sites-enabled/webapp.conf
 
@@ -164,7 +164,7 @@ RUN mkdir -p /etc/service/nginx && \
     chmod +x /etc/service/nginx/control/t
 
 # Copy startup script
-COPY start-passenger-jruby.sh /etc/my_init.d/99_start_jruby_app.sh
+COPY src/start-passenger-jruby.sh /etc/my_init.d/99_start_jruby_app.sh
 RUN chmod +x /etc/my_init.d/99_start_jruby_app.sh
 
 # Create log directory

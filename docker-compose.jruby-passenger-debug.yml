@@ -3,8 +3,6 @@
 # 
 # Fixed: Uses proper apt installation for libnginx-mod-http-passenger
 
-version: '3.8'
-
 services:
   jruby-passenger-debug:
     build:
