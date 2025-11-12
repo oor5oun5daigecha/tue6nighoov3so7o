@@ -100,13 +100,19 @@ RUN set -e && \
     apt-get update && \
     # Install nginx and passenger from official repo
     apt-get install -y --no-install-recommends nginx-extras passenger && \
-    # Find and enable passenger module (location may vary)
-    PASSENGER_MODULE=$(find /usr -name "*passenger*.so" 2>/dev/null | head -1) && \
+    # Find and enable passenger nginx module (search specifically for nginx modules)
+    PASSENGER_MODULE=$(find /usr -name "*ngx*passenger*.so" -o -name "mod_passenger.so" 2>/dev/null | head -1) && \
     if [ -n "$PASSENGER_MODULE" ]; then \
         echo "load_module $PASSENGER_MODULE;" > /etc/nginx/modules-enabled/50-mod-http-passenger.conf; \
-        echo "Found Passenger module at: $PASSENGER_MODULE"; \
+        echo "Found Passenger nginx module at: $PASSENGER_MODULE"; \
     else \
-        echo "Warning: Passenger module not found, trying alternative approach"; \
+        echo "Warning: Passenger nginx module not found, disabling explicit module loading"; \
+        rm -f /etc/nginx/modules-enabled/50-mod-http-passenger.conf; \
+        echo "Passenger will be loaded via configuration directives only"; \
+    fi && \
+    # Check if passenger is built-in to nginx
+    if nginx -V 2>&1 | grep -q passenger; then \
+        echo "Passenger is built-in to nginx, no module loading needed"; \
         rm -f /etc/nginx/modules-enabled/50-mod-http-passenger.conf; \
     fi && \
     # Configure Passenger in nginx.conf
