@@ -1,0 +1,5 @@
+FROM monitus-jruby-passenger-debug:latest
+
+# Override the entrypoint for debugging
+ENTRYPOINT ["/bin/bash", "-c"]
+CMD ["echo 'Container ready for debugging' && /bin/bash"]
