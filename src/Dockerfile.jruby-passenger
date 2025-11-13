@@ -100,23 +100,9 @@ RUN set -e && \
     apt-get update && \
     # Install nginx and passenger from official repo
     apt-get install -y --no-install-recommends nginx-extras passenger && \
-    # Check if passenger is built-in to nginx first
-    echo "Checking if Passenger is built-in to nginx..." && \
-    if nginx -V 2>&1 | grep -q passenger; then \
-        echo "✓ Passenger is built-in to nginx, no module loading needed"; \
-        rm -f /etc/nginx/modules-enabled/50-mod-http-passenger.conf; \
-    else \
-        echo "Passenger not built-in, searching for module..." && \
-        # Search for nginx-specific passenger modules only
-        PASSENGER_MODULE=$(find /usr/lib -name "*ngx*passenger*.so" -o -name "ngx_http_passenger_module.so" 2>/dev/null | head -1) && \
-        if [ -n "$PASSENGER_MODULE" ]; then \
-            echo "✓ Found Passenger nginx module at: $PASSENGER_MODULE"; \
-            echo "load_module $PASSENGER_MODULE;" > /etc/nginx/modules-enabled/50-mod-http-passenger.conf; \
-        else \
-            echo "⚠ No Passenger nginx module found, using configuration-based approach"; \
-            rm -f /etc/nginx/modules-enabled/50-mod-http-passenger.conf; \
-        fi; \
-    fi && \
+    # For nginx-extras, Passenger is typically built-in, no module loading needed
+    echo "✓ Using nginx-extras with built-in Passenger support" && \
+    rm -f /etc/nginx/modules-enabled/50-mod-http-passenger.conf && \
     # Configure Passenger in nginx.conf
     echo 'passenger_root /usr/lib/ruby/vendor_ruby/phusion_passenger/locations.ini;' >> /etc/nginx/nginx.conf && \
     echo 'passenger_ruby /usr/bin/jruby;' >> /etc/nginx/nginx.conf && \
