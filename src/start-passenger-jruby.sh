@@ -44,7 +44,10 @@ chown -R app:app /var/run/passenger-instreg || true
 
 # Test Nginx configuration
 echo "[$(date)] Testing Nginx configuration..."
-nginx -t || echo "Warning: Nginx config test failed"
+echo "Loaded modules:"
+nginx -V 2>&1 | grep -o 'configure arguments.*' | tr ' ' '\n' | grep passenger || echo "No passenger in configure args"
+echo "Testing config:"
+nginx -t && echo "✓ Nginx config OK" || echo "✗ Nginx config failed"
 
 echo "[$(date)] JRuby + Passenger initialization completed!"
 echo "[$(date)] Application should be available on port 80"

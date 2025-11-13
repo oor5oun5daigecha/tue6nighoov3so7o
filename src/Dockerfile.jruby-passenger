@@ -100,9 +100,33 @@ RUN set -e && \
     apt-get update && \
     # Install nginx and passenger from official repo
     apt-get install -y --no-install-recommends nginx-extras passenger && \
-    # For nginx-extras, Passenger is typically built-in, no module loading needed
-    echo "✓ Using nginx-extras with built-in Passenger support" && \
-    rm -f /etc/nginx/modules-enabled/50-mod-http-passenger.conf && \
+    # Find and load the correct Passenger module
+    echo "Searching for Passenger module..." && \
+    # Look for the proper nginx passenger module
+    PASSENGER_MODULE="" && \
+    # Check common locations for passenger module
+    for module_path in \
+        "/usr/lib/nginx/modules/ngx_http_passenger_module.so" \
+        "/usr/lib/x86_64-linux-gnu/nginx/modules/ngx_http_passenger_module.so" \
+        "/usr/share/nginx/modules/ngx_http_passenger_module.so" \
+    ; do \
+        if [ -f "$module_path" ]; then \
+            PASSENGER_MODULE="$module_path"; \
+            break; \
+        fi; \
+    done && \
+    # If not found in common locations, search system-wide
+    if [ -z "$PASSENGER_MODULE" ]; then \
+        PASSENGER_MODULE=$(find /usr -name "ngx_http_passenger_module.so" 2>/dev/null | head -1); \
+    fi && \
+    # Configure the module loading
+    if [ -n "$PASSENGER_MODULE" ] && [ -f "$PASSENGER_MODULE" ]; then \
+        echo "✓ Found Passenger module at: $PASSENGER_MODULE"; \
+        echo "load_module $PASSENGER_MODULE;" > /etc/nginx/modules-enabled/50-mod-http-passenger.conf; \
+    else \
+        echo "⚠ Passenger module not found, trying without explicit module loading"; \
+        rm -f /etc/nginx/modules-enabled/50-mod-http-passenger.conf; \
+    fi && \
     # Configure Passenger in nginx.conf
     echo 'passenger_root /usr/lib/ruby/vendor_ruby/phusion_passenger/locations.ini;' >> /etc/nginx/nginx.conf && \
     echo 'passenger_ruby /usr/bin/jruby;' >> /etc/nginx/nginx.conf && \
@@ -149,8 +173,7 @@ RUN rm -f Gemfile.lock
 COPY --chown=app:app check-passenger-installation.sh /home/app/webapp/check-passenger-installation.sh
 RUN chmod +x /home/app/webapp/check-passenger-installation.sh
 
-# Configure Passenger to use JRuby
-RUN echo 'passenger_ruby /usr/bin/jruby;' > /etc/nginx/conf.d/passenger-jruby.conf
+# Passenger is already configured in nginx.conf - no additional config needed
 
 # Copy Nginx virtual host configuration
 COPY src/nginx-jruby.conf /etc/nginx/sites-available/webapp.conf
